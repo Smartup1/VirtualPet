@@ -1,0 +1,29 @@
+{
+  "expo": {
+    "name": "CapyPet",
+    "slug": "capypet",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "capypet",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "backgroundColor": "#FFF3E0"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "android": {
+      "package": "com.capypet.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#FFF3E0"
+      }
+    },
+    "plugins": [
+      "expo-router",
+      "expo-notifications"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": ""
+      }
+    }
+  }
+}
