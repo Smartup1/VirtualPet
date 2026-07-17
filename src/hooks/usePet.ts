@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { usePetStore } from "@store/petStore";
-import { PetAction } from "@types/index";
+import { PetAction } from "@ptypes/index";
 
 /**
  * Hook central para a tela do pet.

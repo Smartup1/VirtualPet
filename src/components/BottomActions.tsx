@@ -3,7 +3,7 @@ import { View, StyleSheet } from "react-native";
 import AnimatedButton from "./AnimatedButton";
 import { colors } from "@styles/colors";
 import { spacing } from "@styles/theme";
-import { PetAction } from "@types/index";
+import { PetAction } from "@ptypes/index";
 
 interface BottomActionsProps {
   onAction: (action: PetAction) => void;

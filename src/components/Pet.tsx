@@ -8,7 +8,7 @@ import { useEatAnimation } from "@animations/eat";
 import { useSleepAnimation } from "@animations/sleep";
 import { colors } from "@styles/colors";
 import { radius, shadow } from "@styles/theme";
-import { PetMood } from "@types/index";
+import { PetMood } from "@ptypes/index";
 
 interface PetProps {
   mood: PetMood;

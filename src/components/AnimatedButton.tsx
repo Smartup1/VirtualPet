@@ -1,6 +1,5 @@
 import React from "react";
-import { StyleSheet, Text, ViewStyle } from "react-native";
-import { Pressable } from "react-native-gesture-handler";
+import { Pressable, StyleSheet, Text, ViewStyle } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { colors } from "@styles/colors";
 import { radius, shadow, spacing } from "@styles/theme";

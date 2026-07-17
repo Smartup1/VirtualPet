@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { PetState, PetAction } from "@types/index";
+import { PetState, PetAction } from "@ptypes/index";
 import {
   ACTION_GAIN,
   DECAY_PER_MINUTE,
