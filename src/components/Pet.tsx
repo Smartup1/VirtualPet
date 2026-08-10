@@ -1,5 +1,11 @@
-import React, { useEffect } from "react";
-import { View, Text, StyleSheet } from "react-native";
+import React, { useEffect, useState } from "react";
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  TouchableOpacity,
+  Vibration 
+} from "react-native";
 import Animated from "react-native-reanimated";
 import Svg, {
   Ellipse,
@@ -15,6 +21,7 @@ import { useIdleAnimation } from "@animations/idle";
 import { useBlinkAnimation } from "@animations/blink";
 import { useEatAnimation } from "@animations/eat";
 import { useSleepAnimation } from "@animations/sleep";
+import { useHappyAnimation } from "@animations/happy"; // NOVO
 
 import { colors } from "@styles/colors";
 import { radius } from "@styles/theme";
@@ -24,186 +31,118 @@ import { SHOP_ITEMS } from "@constants/shopItems";
 interface PetProps {
   mood: PetMood;
   equippedAccessory?: string | null;
+  onPetPress?: () => void; // NOVO: callback opcional
 }
 
 const OUTLINE = "#5A351E";
-
 const WIDTH = 320;
 const HEIGHT = 390;
 
 export default function Pet({
   mood,
   equippedAccessory,
+  onPetPress,
 }: PetProps) {
+  const [isHappy, setIsHappy] = useState(false);
+
+  // Animações existentes
   const idleStyle = useIdleAnimation();
   const blinkStyle = useBlinkAnimation();
+  const { animatedStyle: eatStyle, play: playEat } = useEatAnimation();
+  const { bodyStyle: sleepBodyStyle, zStyle } = useSleepAnimation(mood === "sleeping");
+  
+  // NOVA animação de felicidade
+  const { happyStyle } = useHappyAnimation(isHappy);
 
-  const {
-    animatedStyle: eatStyle,
-    play: playEat,
-  } = useEatAnimation();
-
-  const {
-    bodyStyle: sleepBodyStyle,
-    zStyle,
-  } = useSleepAnimation(mood === "sleeping");
-
+  // Acessório
   const accessory = equippedAccessory
-    ? SHOP_ITEMS.find(
-        (item) => item.id === equippedAccessory
-      )
+    ? SHOP_ITEMS.find((item) => item.id === equippedAccessory)
     : null;
 
+  // Efeito para comer
   useEffect(() => {
     if (mood === "eating") {
       playEat();
     }
   }, [mood, playEat]);
 
-  return (
-    <View style={styles.wrapper}>
+  // NOVA função de toque
+  const handlePetPress = () => {
+    // Feedback tátil (vibração) - opcional
+    Vibration.vibrate(10);
+    
+    // Ativa animação feliz
+    setIsHappy(true);
+    
+    // Chama callback externo se existir
+    if (onPetPress) {
+      onPetPress();
+    }
+    
+    // Desativa após 1.5 segundos
+    setTimeout(() => {
+      setIsHappy(false);
+    }, 1500);
+  };
 
+  return (
+    <TouchableOpacity
+      onPress={handlePetPress}
+      activeOpacity={0.85}
+      style={styles.wrapper}
+    >
       {/* ZZZ */}
       {mood === "sleeping" && (
-        <Animated.Text
-          style={[styles.zzz, zStyle]}
-        >
-          💤
-        </Animated.Text>
+        <Animated.Text style={[styles.zzz, zStyle]}>💤</Animated.Text>
       )}
 
       {/* Sombra */}
       <View style={styles.shadow} />
 
-      {/* Corpo animado */}
+      {/* Corpo animado com TODAS as animações combinadas */}
       <Animated.View
         style={[
           styles.character,
           idleStyle,
           eatStyle,
           sleepBodyStyle,
+          happyStyle, // NOVA animação
         ]}
       >
-        <Svg
-          width={WIDTH}
-          height={HEIGHT}
-          viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-        >
-
+        <Svg width={WIDTH} height={HEIGHT} viewBox={`0 0 ${WIDTH} ${HEIGHT}`}>
           <Defs>
-
-            {/* Pelagem principal */}
-            <RadialGradient
-              id="fur"
-              cx="35%"
-              cy="25%"
-              r="80%"
-            >
-              <Stop
-                offset="0"
-                stopColor="#FFD88F"
-              />
-
-              <Stop
-                offset="0.35"
-                stopColor="#F5BE68"
-              />
-
-              <Stop
-                offset="0.72"
-                stopColor="#D99345"
-              />
-
-              <Stop
-                offset="1"
-                stopColor="#B87332"
-              />
+            <RadialGradient id="fur" cx="35%" cy="25%" r="80%">
+              <Stop offset="0" stopColor="#FFD88F" />
+              <Stop offset="0.35" stopColor="#F5BE68" />
+              <Stop offset="0.72" stopColor="#D99345" />
+              <Stop offset="1" stopColor="#B87332" />
             </RadialGradient>
 
-            {/* Parte escura das orelhas */}
-            <RadialGradient
-              id="ear"
-              cx="35%"
-              cy="25%"
-              r="80%"
-            >
-              <Stop
-                offset="0"
-                stopColor="#B8783F"
-              />
-
-              <Stop
-                offset="1"
-                stopColor="#70401F"
-              />
+            <RadialGradient id="ear" cx="35%" cy="25%" r="80%">
+              <Stop offset="0" stopColor="#B8783F" />
+              <Stop offset="1" stopColor="#70401F" />
             </RadialGradient>
 
-            {/* Focinho */}
-            <RadialGradient
-              id="snout"
-              cx="35%"
-              cy="20%"
-              r="85%"
-            >
-              <Stop
-                offset="0"
-                stopColor="#9A6237"
-              />
-
-              <Stop
-                offset="0.6"
-                stopColor="#714323"
-              />
-
-              <Stop
-                offset="1"
-                stopColor="#4D2B18"
-              />
+            <RadialGradient id="snout" cx="35%" cy="20%" r="85%">
+              <Stop offset="0" stopColor="#9A6237" />
+              <Stop offset="0.6" stopColor="#714323" />
+              <Stop offset="1" stopColor="#4D2B18" />
             </RadialGradient>
 
-            {/* Patas */}
-            <LinearGradient
-              id="paw"
-              x1="0"
-              y1="0"
-              x2="0"
-              y2="1"
-            >
-              <Stop
-                offset="0"
-                stopColor="#9A6135"
-              />
-
-              <Stop
-                offset="1"
-                stopColor="#603719"
-              />
+            <LinearGradient id="paw" x1="0" y1="0" x2="0" y2="1">
+              <Stop offset="0" stopColor="#9A6135" />
+              <Stop offset="1" stopColor="#603719" />
             </LinearGradient>
 
-            {/* Barriga */}
-            <RadialGradient
-              id="belly"
-              cx="50%"
-              cy="25%"
-              r="80%"
-            >
-              <Stop
-                offset="0"
-                stopColor="#FFDFA4"
-              />
-
-              <Stop
-                offset="1"
-                stopColor="#D99A50"
-              />
+            <RadialGradient id="belly" cx="50%" cy="25%" r="80%">
+              <Stop offset="0" stopColor="#FFDFA4" />
+              <Stop offset="1" stopColor="#D99A50" />
             </RadialGradient>
-
           </Defs>
 
           {/* ================================================= */}
           {/* PATAS TRASEIRAS */}
           {/* ================================================= */}
-
           <Ellipse
             cx="76"
             cy="337"
@@ -213,7 +152,6 @@ export default function Pet({
             stroke={OUTLINE}
             strokeWidth="3"
           />
-
           <Ellipse
             cx="244"
             cy="337"
@@ -227,7 +165,6 @@ export default function Pet({
           {/* ================================================= */}
           {/* CORPO */}
           {/* ================================================= */}
-
           <Ellipse
             cx="160"
             cy="275"
@@ -237,9 +174,6 @@ export default function Pet({
             stroke={OUTLINE}
             strokeWidth="3"
           />
-
-          {/* barriga iluminada */}
-
           <Ellipse
             cx="160"
             cy="286"
@@ -252,7 +186,6 @@ export default function Pet({
           {/* ================================================= */}
           {/* ORELHAS */}
           {/* ================================================= */}
-
           <Ellipse
             cx="70"
             cy="88"
@@ -263,7 +196,6 @@ export default function Pet({
             strokeWidth="4"
             transform="rotate(-18 70 88)"
           />
-
           <Ellipse
             cx="250"
             cy="88"
@@ -274,9 +206,6 @@ export default function Pet({
             strokeWidth="4"
             transform="rotate(18 250 88)"
           />
-
-          {/* interior das orelhas */}
-
           <Ellipse
             cx="70"
             cy="90"
@@ -285,7 +214,6 @@ export default function Pet({
             fill="url(#ear)"
             transform="rotate(-18 70 90)"
           />
-
           <Ellipse
             cx="250"
             cy="90"
@@ -298,7 +226,6 @@ export default function Pet({
           {/* ================================================= */}
           {/* CABEÇA */}
           {/* ================================================= */}
-
           <Ellipse
             cx="160"
             cy="157"
@@ -308,9 +235,6 @@ export default function Pet({
             stroke={OUTLINE}
             strokeWidth="3"
           />
-
-          {/* iluminação da cabeça */}
-
           <Ellipse
             cx="120"
             cy="85"
@@ -319,7 +243,6 @@ export default function Pet({
             fill="#FFF1C8"
             opacity={0.22}
           />
-
           <Ellipse
             cx="104"
             cy="116"
@@ -332,7 +255,6 @@ export default function Pet({
           {/* ================================================= */}
           {/* SOBRANCELHAS */}
           {/* ================================================= */}
-
           <Path
             d="M95 120 Q113 103 133 116"
             stroke="#663B20"
@@ -340,7 +262,6 @@ export default function Pet({
             fill="none"
             strokeLinecap="round"
           />
-
           <Path
             d="M187 116 Q207 103 225 120"
             stroke="#663B20"
@@ -352,7 +273,6 @@ export default function Pet({
           {/* ================================================= */}
           {/* BOCHECHAS */}
           {/* ================================================= */}
-
           <Ellipse
             cx="72"
             cy="197"
@@ -361,7 +281,6 @@ export default function Pet({
             fill="#F18C7E"
             opacity={0.55}
           />
-
           <Ellipse
             cx="248"
             cy="197"
@@ -370,29 +289,12 @@ export default function Pet({
             fill="#F18C7E"
             opacity={0.55}
           />
-
-          {/* brilho nas bochechas */}
-
-          <Circle
-            cx="67"
-            cy="193"
-            r="5"
-            fill="#FFC4B8"
-            opacity={0.65}
-          />
-
-          <Circle
-            cx="243"
-            cy="193"
-            r="5"
-            fill="#FFC4B8"
-            opacity={0.65}
-          />
+          <Circle cx="67" cy="193" r="5" fill="#FFC4B8" opacity={0.65} />
+          <Circle cx="243" cy="193" r="5" fill="#FFC4B8" opacity={0.65} />
 
           {/* ================================================= */}
           {/* FOCINHO */}
           {/* ================================================= */}
-
           <Ellipse
             cx="160"
             cy="199"
@@ -402,9 +304,6 @@ export default function Pet({
             stroke={OUTLINE}
             strokeWidth="3"
           />
-
-          {/* brilho do focinho */}
-
           <Ellipse
             cx="135"
             cy="178"
@@ -417,61 +316,22 @@ export default function Pet({
           {/* ================================================= */}
           {/* NARIZ */}
           {/* ================================================= */}
-
-          <Ellipse
-            cx="160"
-            cy="179"
-            rx="18"
-            ry="12"
-            fill="#321B10"
-          />
-
-          <Ellipse
-            cx="154"
-            cy="175"
-            rx="5"
-            ry="3"
-            fill="#FFFFFF"
-            opacity={0.18}
-          />
+          <Ellipse cx="160" cy="179" rx="18" ry="12" fill="#321B10" />
+          <Ellipse cx="154" cy="175" rx="5" ry="3" fill="#FFFFFF" opacity={0.18} />
 
           {/* ================================================= */}
           {/* BOCA */}
           {/* ================================================= */}
-
           <Path
-            d="
-              M160 195
-              Q157 213 143 216
-              Q160 232 177 216
-              Q163 213 160 195
-            "
+            d="M160 195 Q157 213 143 216 Q160 232 177 216 Q163 213 160 195"
             fill="#3C2114"
           />
-
-          {/* língua */}
-
-          <Ellipse
-            cx="160"
-            cy="219"
-            rx="15"
-            ry="9"
-            fill="#E97870"
-          />
-
-          <Ellipse
-            cx="155"
-            cy="216"
-            rx="6"
-            ry="3"
-            fill="#FFB0A8"
-            opacity={0.7}
-          />
+          <Ellipse cx="160" cy="219" rx="15" ry="9" fill="#E97870" />
+          <Ellipse cx="155" cy="216" rx="6" ry="3" fill="#FFB0A8" opacity={0.7} />
 
           {/* ================================================= */}
           {/* PATAS DA FRENTE */}
           {/* ================================================= */}
-
           <Ellipse
             cx="103"
             cy="335"
@@ -481,7 +341,6 @@ export default function Pet({
             stroke={OUTLINE}
             strokeWidth="3"
           />
-
           <Ellipse
             cx="217"
             cy="335"
@@ -491,30 +350,24 @@ export default function Pet({
             stroke={OUTLINE}
             strokeWidth="3"
           />
-
-          {/* dedos */}
-
           <Path
             d="M91 335 Q96 342 101 335"
             stroke="#4A2817"
             strokeWidth="3"
             fill="none"
           />
-
           <Path
             d="M104 335 Q109 342 114 335"
             stroke="#4A2817"
             strokeWidth="3"
             fill="none"
           />
-
           <Path
             d="M206 335 Q211 342 216 335"
             stroke="#4A2817"
             strokeWidth="3"
             fill="none"
           />
-
           <Path
             d="M219 335 Q224 342 229 335"
             stroke="#4A2817"
@@ -525,7 +378,6 @@ export default function Pet({
           {/* ================================================= */}
           {/* TEXTURA DA PELAGEM */}
           {/* ================================================= */}
-
           <Path
             d="M82 95 Q72 108 80 122"
             stroke="#C77E3D"
@@ -534,7 +386,6 @@ export default function Pet({
             fill="none"
             strokeLinecap="round"
           />
-
           <Path
             d="M72 138 Q61 151 70 164"
             stroke="#C77E3D"
@@ -543,7 +394,6 @@ export default function Pet({
             fill="none"
             strokeLinecap="round"
           />
-
           <Path
             d="M238 98 Q248 110 241 123"
             stroke="#B86E34"
@@ -552,7 +402,6 @@ export default function Pet({
             fill="none"
             strokeLinecap="round"
           />
-
           <Path
             d="M76 251 Q62 264 72 277"
             stroke="#C57C3C"
@@ -561,7 +410,6 @@ export default function Pet({
             fill="none"
             strokeLinecap="round"
           />
-
           <Path
             d="M245 250 Q258 263 248 277"
             stroke="#B66D32"
@@ -574,7 +422,6 @@ export default function Pet({
           {/* ================================================= */}
           {/* TANGERINA */}
           {/* ================================================= */}
-
           {!accessory && (
             <>
               <Ellipse
@@ -585,7 +432,6 @@ export default function Pet({
                 fill="#4D9D36"
                 transform="rotate(-25 160 34)"
               />
-
               <Path
                 d="M155 31 Q166 23 173 31"
                 stroke="#397B2A"
@@ -593,7 +439,6 @@ export default function Pet({
                 fill="none"
                 strokeLinecap="round"
               />
-
               <Circle
                 cx="160"
                 cy="57"
@@ -602,7 +447,6 @@ export default function Pet({
                 stroke={OUTLINE}
                 strokeWidth="3"
               />
-
               <Ellipse
                 cx="150"
                 cy="47"
@@ -611,7 +455,6 @@ export default function Pet({
                 fill="#FFD080"
                 opacity={0.65}
               />
-
               <Path
                 d="M137 64 Q160 78 182 62"
                 stroke="#E86F18"
@@ -621,172 +464,96 @@ export default function Pet({
               />
             </>
           )}
-
         </Svg>
 
-        {/* ================================================= */}
         {/* OLHOS */}
-        {/* ================================================= */}
-
-        <Animated.View
-          style={[
-            styles.eyesLayer,
-            blinkStyle,
-          ]}
-        >
-
-          {/* olho esquerdo */}
-
-          <View
-            style={[
-              styles.eye,
-              {
-                left: 82,
-              },
-            ]}
-          >
+        <Animated.View style={[styles.eyesLayer, blinkStyle]}>
+          <View style={[styles.eye, { left: 82 }]}>
             <View style={styles.eyeLargeShine} />
             <View style={styles.eyeSmallShine} />
           </View>
-
-          {/* olho direito */}
-
-          <View
-            style={[
-              styles.eye,
-              {
-                left: 190,
-              },
-            ]}
-          >
+          <View style={[styles.eye, { left: 190 }]}>
             <View style={styles.eyeLargeShine} />
             <View style={styles.eyeSmallShine} />
           </View>
-
         </Animated.View>
-
       </Animated.View>
 
       {/* Acessório */}
-      {accessory && (
-        <Text style={styles.accessory}>
-          {accessory.icon}
-        </Text>
-      )}
-
-    </View>
+      {accessory && <Text style={styles.accessory}>{accessory.icon}</Text>}
+    </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
-
   wrapper: {
     width: WIDTH,
     height: HEIGHT,
     alignItems: "center",
     justifyContent: "center",
   },
-
   character: {
     width: WIDTH,
     height: HEIGHT,
   },
-
   shadow: {
     position: "absolute",
     bottom: 7,
-
     width: 220,
     height: 35,
-
     borderRadius: radius.pill,
-
     backgroundColor: "rgba(40, 20, 10, 0.25)",
-
-    transform: [
-      {
-        scaleX: 1.1,
-      },
-    ],
+    transform: [{ scaleX: 1.1 }],
   },
-
   eyesLayer: {
     position: "absolute",
-
     top: 136,
     left: 0,
-
     width: WIDTH,
     height: 65,
   },
-
   eye: {
     position: "absolute",
-
     width: 48,
     height: 58,
-
     borderRadius: 30,
-
     backgroundColor: "#24150D",
-
     borderWidth: 3,
     borderColor: "#432719",
-
     alignItems: "center",
     justifyContent: "center",
-
     overflow: "hidden",
   },
-
   eyeLargeShine: {
     position: "absolute",
-
     top: 7,
     left: 9,
-
     width: 15,
     height: 17,
-
     borderRadius: 10,
-
     backgroundColor: colors.white,
   },
-
   eyeSmallShine: {
     position: "absolute",
-
     bottom: 9,
     right: 9,
-
     width: 6,
     height: 7,
-
     borderRadius: 5,
-
     backgroundColor: "#FFF",
     opacity: 0.8,
   },
-
   zzz: {
     position: "absolute",
-
     top: -5,
     right: 15,
-
     fontSize: 32,
-
     zIndex: 20,
   },
-
   accessory: {
     position: "absolute",
-
     top: 0,
-
     fontSize: 42,
-
     zIndex: 20,
   },
-
 });

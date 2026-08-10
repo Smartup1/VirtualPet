@@ -1,7 +1,8 @@
+// src/store/petStore.ts
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { PetState, PetAction, PetStats } from "@ptypes/index";
+import { PetState, PetAction, PetStats, PetMood } from "@ptypes/index";
 import {
   ACTION_GAIN,
   DECAY_PER_MINUTE,
@@ -12,15 +13,28 @@ import {
 } from "@constants/gameplay";
 import { SHOP_ITEMS } from "@constants/shopItems";
 
+// Interface estendida da store
 interface PetStore extends PetState {
+  // Ações existentes
   performAction: (action: PetAction) => void;
   applyOfflineDecay: () => void;
   addCurrency: (coins: number, gems: number) => void;
   spendCoins: (amount: number) => boolean;
   spendGems: (amount: number) => boolean;
-  /** Retorna "ok", "already_owned", "not_enough_funds" ou "not_found" */
   purchaseItem: (itemId: string) => "ok" | "already_owned" | "not_enough_funds" | "not_found";
   equipAccessory: (itemId: string | null) => void;
+  
+  // NOVAS ações para interação com o pet
+  petInteraction: () => void;
+  setMood: (mood: PetMood) => void;
+  addCoins: (amount: number) => void;
+  addGems: (amount: number) => void;
+  addXP: (amount: number) => void;
+  resetPet: () => void;
+  feed: () => void;
+  play: () => void;
+  sleepAction: () => void;
+  bathe: () => void;
 }
 
 const initialState: PetState = {
@@ -44,6 +58,8 @@ const initialState: PetState = {
   lastUpdatedAt: Date.now(),
   inventory: [],
   equippedAccessory: null,
+  interactionCount: 0,
+  lastInteractionAt: Date.now(),
 };
 
 function clampStat(value: number) {
@@ -61,6 +77,10 @@ export const usePetStore = create<PetStore>()(
   persist(
     (set, get) => ({
       ...initialState,
+
+      // =============================================
+      // AÇÕES EXISTENTES
+      // =============================================
 
       performAction: (action) => {
         const gain = ACTION_GAIN[action] ?? {};
@@ -135,8 +155,6 @@ export const usePetStore = create<PetStore>()(
 
         const state = get();
 
-        // Acessórios são comprados uma única vez; comida/boost são consumíveis
-        // e podem ser comprados repetidamente.
         if (item.category === "accessory" && state.inventory.includes(itemId)) {
           return "already_owned";
         }
@@ -174,10 +192,119 @@ export const usePetStore = create<PetStore>()(
         if (itemId !== null && !state.inventory.includes(itemId)) return;
         set({ equippedAccessory: itemId });
       },
+
+      // =============================================
+      // NOVAS AÇÕES PARA INTERAÇÃO
+      // =============================================
+
+      petInteraction: () => {
+        const state = get();
+        const now = Date.now();
+        const timeSinceLastInteraction = (now - state.lastInteractionAt) / 1000;
+
+        let happinessGain = 5;
+        let coinGain = 1;
+
+        if (timeSinceLastInteraction > 60) {
+          happinessGain = 10;
+          coinGain = 2;
+        }
+
+        const interactionBonus = Math.floor(state.interactionCount / 10) + 1;
+        happinessGain += interactionBonus;
+
+        const newStats = { ...state.stats };
+        newStats.happiness = clampStat(newStats.happiness + happinessGain);
+
+        set({
+          stats: newStats,
+          mood: computeMood(newStats),
+          wallet: {
+            ...state.wallet,
+            coins: state.wallet.coins + coinGain,
+          },
+          interactionCount: state.interactionCount + 1,
+          lastInteractionAt: now,
+        });
+      },
+
+      setMood: (mood: PetMood) => {
+        set({ mood });
+      },
+
+      addCoins: (amount) => {
+        set((state) => ({
+          wallet: {
+            ...state.wallet,
+            coins: state.wallet.coins + amount,
+          },
+        }));
+      },
+
+      addGems: (amount) => {
+        set((state) => ({
+          wallet: {
+            ...state.wallet,
+            gems: state.wallet.gems + amount,
+          },
+        }));
+      },
+
+      addXP: (amount) => {
+        set((state) => {
+          let { level, xp, xpToNextLevel } = state.progress;
+          xp += amount;
+          
+          let leveledUp = false;
+          while (xp >= xpToNextLevel) {
+            xp -= xpToNextLevel;
+            level += 1;
+            xpToNextLevel = xpNeededForLevel(level);
+            leveledUp = true;
+          }
+
+          return {
+            progress: { level, xp, xpToNextLevel },
+            ...(leveledUp && {
+              stats: {
+                ...state.stats,
+                happiness: clampStat(state.stats.happiness + 10),
+              },
+              mood: "happy",
+            }),
+          };
+        });
+      },
+
+      resetPet: () => {
+        set({
+          ...initialState,
+          lastUpdatedAt: Date.now(),
+          lastInteractionAt: Date.now(),
+        });
+      },
+
+      // Ações rápidas
+      feed: () => {
+        get().performAction("feed");
+      },
+
+      play: () => {
+        get().performAction("play");
+      },
+
+      sleepAction: () => {
+        get().performAction("sleep");
+      },
+
+      bathe: () => {
+        get().performAction("bathe");
+      },
     }),
     {
       name: "capypet-storage",
       storage: createJSONStorage(() => AsyncStorage),
+      version: 2,
     }
   )
 );

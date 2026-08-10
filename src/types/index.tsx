@@ -1,3 +1,4 @@
+// src/types/index.ts
 export type PetMood = "happy" | "neutral" | "sad" | "sleeping" | "eating";
 
 export interface PetStats {
@@ -27,6 +28,9 @@ export interface PetState {
   lastUpdatedAt: number; // timestamp usado para calcular decaimento offline
   inventory: string[]; // ids de ShopItem já comprados
   equippedAccessory: string | null; // id de um item da categoria "accessory"
+  // NOVOS campos para interação
+  interactionCount: number;
+  lastInteractionAt: number;
 }
 
 export type PetAction = "feed" | "play" | "sleep" | "bathe" | "pet";
