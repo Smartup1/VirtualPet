@@ -6,7 +6,7 @@ import { useRouter } from "expo-router";
 import Currency from "@components/Currency";
 import ShopItemCard from "@components/ShopItemCard";
 import { colors } from "@styles/colors";
-import { radius, spacing } from "@styles/theme";
+import { radius, spacing, shadow } from "@styles/theme";
 import { usePetStore } from "@store/petStore";
 import { SHOP_ITEMS } from "@constants/shopItems";
 import { ShopCategory } from "@ptypes/index";
@@ -51,17 +51,28 @@ export default function ShopScreen() {
         <Text style={styles.title}>Loja</Text>
 
         <View style={styles.tabs}>
-          {TABS.map((tab) => (
-            <Pressable
-              key={tab.key}
-              style={[styles.tab, activeTab === tab.key && styles.tabActive]}
-              onPress={() => setActiveTab(tab.key)}
-            >
-              <Text style={[styles.tabLabel, activeTab === tab.key && styles.tabLabelActive]}>
-                {tab.label}
-              </Text>
-            </Pressable>
-          ))}
+          {TABS.map((tab) => {
+            const active = activeTab === tab.key;
+            return (
+              <Pressable
+                key={tab.key}
+                style={[styles.tab, active && styles.tabActive]}
+                onPress={() => setActiveTab(tab.key)}
+              >
+                {active && (
+                  <LinearGradient
+                    colors={[colors.primary, colors.primaryDark]}
+                    style={StyleSheet.absoluteFill}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                  />
+                )}
+                <Text style={[styles.tabLabel, active && styles.tabLabelActive]}>
+                  {tab.label}
+                </Text>
+              </Pressable>
+            );
+          })}
         </View>
 
         <ScrollView contentContainerStyle={styles.grid}>
@@ -108,11 +119,15 @@ const styles = StyleSheet.create({
     color: colors.textDark,
   },
   title: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: "800",
     color: colors.primaryDark,
     textAlign: "center",
     marginTop: spacing.sm,
+    letterSpacing: 0.4,
+    textShadowColor: "rgba(255,255,255,0.6)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 0,
   },
   tabs: {
     flexDirection: "row",
@@ -126,9 +141,12 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
     borderRadius: radius.pill,
     backgroundColor: colors.card,
+    overflow: "hidden",
   },
   tabActive: {
-    backgroundColor: colors.primary,
+    ...shadow.button,
+    shadowColor: colors.primary,
+    shadowOpacity: 0.35,
   },
   tabLabel: {
     fontSize: 12,
