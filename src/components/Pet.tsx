@@ -7,6 +7,7 @@ import {
   Vibration 
 } from "react-native";
 import Animated from "react-native-reanimated";
+import { LinearGradient as ExpoLinearGradient } from "expo-linear-gradient";
 import Svg, {
   Ellipse,
   Circle,
@@ -96,8 +97,22 @@ export default function Pet({
         <Animated.Text style={[styles.zzz, zStyle]}>💤</Animated.Text>
       )}
 
-      {/* Sombra */}
-      <View style={styles.shadow} />
+      {/* Brilho de palco atrás do personagem — dá profundidade e um ar de
+          "vitrine de app premium" em vez de um fundo chapado */}
+      <View style={styles.stageGlow} pointerEvents="none">
+        <ExpoLinearGradient
+          colors={["rgba(255,216,143,0.35)", "rgba(255,216,143,0)"]}
+          style={StyleSheet.absoluteFill}
+          start={{ x: 0.5, y: 0.5 }}
+          end={{ x: 1, y: 1 }}
+        />
+      </View>
+
+      {/* Sombra suave em camadas (simula um blur real sem depender de
+          filtros SVG, que têm suporte instável em React Native) */}
+      <View style={styles.shadowOuter} pointerEvents="none" />
+      <View style={styles.shadowMid} pointerEvents="none" />
+      <View style={styles.shadowCore} pointerEvents="none" />
 
       {/* Corpo animado com TODAS as animações combinadas */}
       <Animated.View
@@ -138,6 +153,13 @@ export default function Pet({
               <Stop offset="0" stopColor="#FFDFA4" />
               <Stop offset="1" stopColor="#D99A50" />
             </RadialGradient>
+
+            {/* Realce (rim light) usado nas bordas superiores da cabeça e
+                do corpo, pra dar sensação de material "fofo"/premium */}
+            <LinearGradient id="rim" x1="0" y1="0" x2="1" y2="1">
+              <Stop offset="0" stopColor="#FFFFFF" stopOpacity={0.85} />
+              <Stop offset="1" stopColor="#FFFFFF" stopOpacity={0} />
+            </LinearGradient>
           </Defs>
 
           {/* ================================================= */}
@@ -174,6 +196,16 @@ export default function Pet({
             stroke={OUTLINE}
             strokeWidth="3"
           />
+
+          {/* Realce de luz no topo do corpo */}
+          <Path
+            d="M78 232 Q140 196 210 210"
+            stroke="url(#rim)"
+            strokeWidth="6"
+            fill="none"
+            strokeLinecap="round"
+            opacity={0.55}
+          />
           <Ellipse
             cx="160"
             cy="286"
@@ -181,6 +213,16 @@ export default function Pet({
             ry="66"
             fill="url(#belly)"
             opacity={0.28}
+          />
+
+          {/* Sombra de contato: onde a cabeça "pousa" sobre o corpo */}
+          <Ellipse
+            cx="160"
+            cy="222"
+            rx="82"
+            ry="18"
+            fill="#5A2E12"
+            opacity={0.16}
           />
 
           {/* ================================================= */}
@@ -223,6 +265,10 @@ export default function Pet({
             transform="rotate(18 250 90)"
           />
 
+          {/* Sombra de contato: base das orelhas contra a cabeça */}
+          <Ellipse cx="82" cy="112" rx="16" ry="10" fill="#5A2E12" opacity={0.14} transform="rotate(-18 82 112)" />
+          <Ellipse cx="238" cy="112" rx="16" ry="10" fill="#5A2E12" opacity={0.14} transform="rotate(18 238 112)" />
+
           {/* ================================================= */}
           {/* CABEÇA */}
           {/* ================================================= */}
@@ -250,6 +296,16 @@ export default function Pet({
             ry="48"
             fill="#FFFFFF"
             opacity={0.08}
+          />
+
+          {/* Realce de luz no topo da cabeça — dá o acabamento "glossy" */}
+          <Path
+            d="M74 96 Q118 46 176 52"
+            stroke="url(#rim)"
+            strokeWidth="7"
+            fill="none"
+            strokeLinecap="round"
+            opacity={0.9}
           />
 
           {/* ================================================= */}
@@ -375,6 +431,11 @@ export default function Pet({
             fill="none"
           />
 
+          {/* Brilho suave no topo das patas dianteiras, pra não ficarem
+              "chapadas" ao lado do resto do corpo com gradiente */}
+          <Ellipse cx="97" cy="327" rx="10" ry="5" fill="#FFFFFF" opacity={0.18} />
+          <Ellipse cx="211" cy="327" rx="10" ry="5" fill="#FFFFFF" opacity={0.18} />
+
           {/* ================================================= */}
           {/* TEXTURA DA PELAGEM */}
           {/* ================================================= */}
@@ -469,10 +530,22 @@ export default function Pet({
         {/* OLHOS */}
         <Animated.View style={[styles.eyesLayer, blinkStyle]}>
           <View style={[styles.eye, { left: 82 }]}>
+            <ExpoLinearGradient
+              colors={["#4A3020", "#1C0F08"]}
+              style={StyleSheet.absoluteFill}
+              start={{ x: 0.3, y: 0 }}
+              end={{ x: 0.7, y: 1 }}
+            />
             <View style={styles.eyeLargeShine} />
             <View style={styles.eyeSmallShine} />
           </View>
           <View style={[styles.eye, { left: 190 }]}>
+            <ExpoLinearGradient
+              colors={["#4A3020", "#1C0F08"]}
+              style={StyleSheet.absoluteFill}
+              start={{ x: 0.3, y: 0 }}
+              end={{ x: 0.7, y: 1 }}
+            />
             <View style={styles.eyeLargeShine} />
             <View style={styles.eyeSmallShine} />
           </View>
@@ -496,13 +569,40 @@ const styles = StyleSheet.create({
     width: WIDTH,
     height: HEIGHT,
   },
-  shadow: {
+  stageGlow: {
     position: "absolute",
-    bottom: 7,
-    width: 220,
-    height: 35,
+    width: WIDTH * 1.15,
+    height: WIDTH * 1.15,
+    borderRadius: (WIDTH * 1.15) / 2,
+    top: HEIGHT / 2 - (WIDTH * 1.15) / 2 - 10,
+  },
+  // sombra composta em 3 camadas: cada uma mais estreita e mais escura,
+  // simulando um blur suave de baixo custo (SVG filters são instáveis em RN)
+  shadowOuter: {
+    position: "absolute",
+    bottom: -4,
+    width: 250,
+    height: 42,
     borderRadius: radius.pill,
-    backgroundColor: "rgba(40, 20, 10, 0.25)",
+    backgroundColor: "rgba(40, 20, 10, 0.08)",
+    transform: [{ scaleX: 1.1 }],
+  },
+  shadowMid: {
+    position: "absolute",
+    bottom: 3,
+    width: 210,
+    height: 34,
+    borderRadius: radius.pill,
+    backgroundColor: "rgba(40, 20, 10, 0.14)",
+    transform: [{ scaleX: 1.1 }],
+  },
+  shadowCore: {
+    position: "absolute",
+    bottom: 9,
+    width: 160,
+    height: 24,
+    borderRadius: radius.pill,
+    backgroundColor: "rgba(40, 20, 10, 0.20)",
     transform: [{ scaleX: 1.1 }],
   },
   eyesLayer: {
@@ -517,7 +617,6 @@ const styles = StyleSheet.create({
     width: 48,
     height: 58,
     borderRadius: 30,
-    backgroundColor: "#24150D",
     borderWidth: 3,
     borderColor: "#432719",
     alignItems: "center",
