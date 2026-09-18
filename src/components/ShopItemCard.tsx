@@ -1,110 +1,276 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { View, Text, StyleSheet, Pressable } from "react-native";
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
+import { LinearGradient } from "expo-linear-gradient";
 import { colors } from "@styles/colors";
 import { radius, shadow, spacing } from "@styles/theme";
-import { ShopItem } from "@ptypes/index";
 
-interface ShopItemCardProps {
-  item: ShopItem;
-  owned: boolean;
-  equipped: boolean;
-  canAfford: boolean;
-  onBuy: () => void;
-  onEquip?: () => void;
+type MenuRoute = "loja" | "conquistas" | "minijogos" | "missoes";
+
+interface SideMenuProps {
+  visible: boolean;
+  onClose: () => void;
+  onNavigate: (route: MenuRoute) => void;
 }
 
-export default function ShopItemCard({
-  item,
-  owned,
-  equipped,
-  canAfford,
-  onBuy,
-  onEquip,
-}: ShopItemCardProps) {
-  const isAccessory = item.category === "accessory";
-  const priceIcon = item.currency === "coins" ? "🪙" : "💎";
+const MENU_WIDTH = 220;
+
+const MENU_ITEMS: { key: MenuRoute; label: string; icon: string; color: string }[] = [
+  { key: "loja", label: "Loja", icon: "🛒", color: colors.primary },
+  { key: "conquistas", label: "Conquistas", icon: "🏆", color: colors.happiness },
+  { key: "minijogos", label: "Minijogos", icon: "🎲", color: colors.secondary },
+  { key: "missoes", label: "Missões diárias", icon: "📅", color: colors.hygiene },
+];
+
+export default function SideMenu({ visible, onClose, onNavigate }: SideMenuProps) {
+  const translateX = useSharedValue(-MENU_WIDTH);
+  const overlayOpacity = useSharedValue(0);
+
+  useEffect(() => {
+    translateX.value = withTiming(visible ? 0 : -MENU_WIDTH, { duration: 250 });
+    overlayOpacity.value = withTiming(visible ? 1 : 0, { duration: 250 });
+  }, [visible]);
+
+  const panelStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: translateX.value }],
+  }));
+
+  const overlayStyle = useAnimatedStyle(() => ({
+    opacity: overlayOpacity.value,
+  }));
 
   return (
-    <View style={[styles.card, equipped && styles.cardEquipped]}>
-      <Text style={styles.icon}>{item.icon}</Text>
-      <Text style={styles.name}>{item.name}</Text>
-      <Text style={styles.description}>{item.description}</Text>
-
-      {isAccessory && owned ? (
-        <Pressable
-          style={[styles.button, equipped ? styles.buttonEquipped : styles.buttonSecondary]}
-          onPress={onEquip}
-        >
-          <Text style={styles.buttonLabel}>{equipped ? "Equipado" : "Equipar"}</Text>
-        </Pressable>
-      ) : (
-        <Pressable
-          style={[styles.button, !canAfford && styles.buttonDisabled]}
-          onPress={onBuy}
-          disabled={!canAfford}
-        >
-          <Text style={[styles.buttonLabel, !canAfford && styles.buttonLabelDisabled]}>
-            {priceIcon} {item.price}
-          </Text>
-        </Pressable>
+    <>
+      {visible && (
+        <Animated.View style={[styles.overlay, overlayStyle]}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+        </Animated.View>
       )}
-    </View>
+      <Animated.View style={[styles.panel, panelStyle]}>
+        <LinearGradient
+          colors={["#FFFFFF", "#FFF6E8"]}
+          style={StyleSheet.absoluteFill}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+        />
+
+        <Text style={styles.title}>CapyPet</Text>
+        <View style={styles.titleUnderline} />
+
+        {MENU_ITEMS.map((item) => (
+          <Pressable
+            key={item.key}
+            style={({ pressed }) => [styles.item, pressed && styles.itemPressed]}
+            onPress={() => onNavigate(item.key)}
+          >
+            <View style={[styles.itemIconBadge, { backgroundColor: `${item.color}26` }]}>
+              <Text style={styles.itemIcon}>{item.icon}</Text>
+            </View>
+            <Text style={styles.itemLabel}>{item.label}</Text>
+          </Pressable>
+        ))}
+      </Animated.View>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    width: "47%",
-    backgroundColor: colors.card,
-    borderRadius: radius.md,
-    padding: spacing.sm,
-    alignItems: "center",
-    marginBottom: spacing.sm,
-    ...shadow.card,
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: colors.overlay,
+    zIndex: 10,
   },
-  cardEquipped: {
-    borderWidth: 2,
-    borderColor: colors.primary,
-  },
-  icon: {
-    fontSize: 36,
-    marginBottom: spacing.xs,
-  },
-  name: {
-    fontWeight: "700",
-    fontSize: 13,
-    color: colors.textDark,
-    textAlign: "center",
-  },
-  description: {
-    fontSize: 11,
-    color: colors.textLight,
-    textAlign: "center",
-    marginVertical: spacing.xs,
-    minHeight: 28,
-  },
-  button: {
-    backgroundColor: colors.primary,
-    borderRadius: radius.pill,
-    paddingVertical: 6,
+  panel: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    left: 0,
+    width: MENU_WIDTH,
+    overflow: "hidden",
+    paddingTop: 60,
     paddingHorizontal: spacing.md,
-    marginTop: spacing.xs,
+    zIndex: 11,
+    borderTopRightRadius: radius.lg,
+    borderBottomRightRadius: radius.lg,
+    ...shadow.card,
+    shadowOpacity: 0.3,
   },
-  buttonSecondary: {
-    backgroundColor: colors.secondary,
+  title: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: colors.primaryDark,
+    letterSpacing: 0.3,
   },
-  buttonEquipped: {
-    backgroundColor: colors.hygiene,
+  titleUnderline: {
+    width: 36,
+    height: 3,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primary,
+    marginTop: 6,
+    marginBottom: spacing.lg,
   },
-  buttonDisabled: {
-    backgroundColor: colors.barBackground,
+  item: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.xs,
+    borderRadius: radius.md,
   },
-  buttonLabel: {
-    color: colors.white,
-    fontWeight: "700",
-    fontSize: 12,
+  itemPressed: {
+    backgroundColor: "rgba(0,0,0,0.05)",
   },
-  buttonLabelDisabled: {
-    color: colors.textLight,
+  itemIconBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: radius.sm,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  itemIcon: {
+    fontSize: 16,
+  },
+  itemLabel: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: colors.textDark,
+  },
+});
+import React, { useEffect } from "react";
+import { View, Text, StyleSheet, Pressable } from "react-native";
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
+import { LinearGradient } from "expo-linear-gradient";
+import { colors } from "@styles/colors";
+import { radius, shadow, spacing } from "@styles/theme";
+
+type MenuRoute = "loja" | "conquistas" | "minijogos" | "missoes";
+
+interface SideMenuProps {
+  visible: boolean;
+  onClose: () => void;
+  onNavigate: (route: MenuRoute) => void;
+}
+
+const MENU_WIDTH = 220;
+
+const MENU_ITEMS: { key: MenuRoute; label: string; icon: string; color: string }[] = [
+  { key: "loja", label: "Loja", icon: "🛒", color: colors.primary },
+  { key: "conquistas", label: "Conquistas", icon: "🏆", color: colors.happiness },
+  { key: "minijogos", label: "Minijogos", icon: "🎲", color: colors.secondary },
+  { key: "missoes", label: "Missões diárias", icon: "📅", color: colors.hygiene },
+];
+
+export default function SideMenu({ visible, onClose, onNavigate }: SideMenuProps) {
+  const translateX = useSharedValue(-MENU_WIDTH);
+  const overlayOpacity = useSharedValue(0);
+
+  useEffect(() => {
+    translateX.value = withTiming(visible ? 0 : -MENU_WIDTH, { duration: 250 });
+    overlayOpacity.value = withTiming(visible ? 1 : 0, { duration: 250 });
+  }, [visible]);
+
+  const panelStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: translateX.value }],
+  }));
+
+  const overlayStyle = useAnimatedStyle(() => ({
+    opacity: overlayOpacity.value,
+  }));
+
+  return (
+    <>
+      {visible && (
+        <Animated.View style={[styles.overlay, overlayStyle]}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+        </Animated.View>
+      )}
+      <Animated.View style={[styles.panel, panelStyle]}>
+        <LinearGradient
+          colors={["#FFFFFF", "#FFF6E8"]}
+          style={StyleSheet.absoluteFill}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+        />
+
+        <Text style={styles.title}>CapyPet</Text>
+        <View style={styles.titleUnderline} />
+
+        {MENU_ITEMS.map((item) => (
+          <Pressable
+            key={item.key}
+            style={({ pressed }) => [styles.item, pressed && styles.itemPressed]}
+            onPress={() => onNavigate(item.key)}
+          >
+            <View style={[styles.itemIconBadge, { backgroundColor: `${item.color}26` }]}>
+              <Text style={styles.itemIcon}>{item.icon}</Text>
+            </View>
+            <Text style={styles.itemLabel}>{item.label}</Text>
+          </Pressable>
+        ))}
+      </Animated.View>
+    </>
+  );
+}
+
+const styles = StyleSheet.create({
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: colors.overlay,
+    zIndex: 10,
+  },
+  panel: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    left: 0,
+    width: MENU_WIDTH,
+    overflow: "hidden",
+    paddingTop: 60,
+    paddingHorizontal: spacing.md,
+    zIndex: 11,
+    borderTopRightRadius: radius.lg,
+    borderBottomRightRadius: radius.lg,
+    ...shadow.card,
+    shadowOpacity: 0.3,
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: colors.primaryDark,
+    letterSpacing: 0.3,
+  },
+  titleUnderline: {
+    width: 36,
+    height: 3,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primary,
+    marginTop: 6,
+    marginBottom: spacing.lg,
+  },
+  item: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.xs,
+    borderRadius: radius.md,
+  },
+  itemPressed: {
+    backgroundColor: "rgba(0,0,0,0.05)",
+  },
+  itemIconBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: radius.sm,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  itemIcon: {
+    fontSize: 16,
+  },
+  itemLabel: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: colors.textDark,
   },
 });
