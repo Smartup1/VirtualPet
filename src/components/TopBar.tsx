@@ -1,5 +1,6 @@
 import React from "react";
 import { View, Text, StyleSheet, Pressable } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import Currency from "./Currency";
 import { colors } from "@styles/colors";
 import { radius, shadow, spacing } from "@styles/theme";
@@ -28,14 +29,33 @@ export default function TopBar({
   return (
     <View style={styles.container}>
       <Pressable style={styles.menuButton} onPress={onMenuPress} hitSlop={8}>
+        <LinearGradient
+          colors={["#FFFFFF", "#F3EFE8"]}
+          style={StyleSheet.absoluteFill}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
+        />
         <Text style={styles.menuIcon}>☰</Text>
       </Pressable>
+
       <View style={styles.levelBadge}>
+        <LinearGradient
+          colors={["#FFFFFF", "#F3EFE8"]}
+          style={StyleSheet.absoluteFill}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
+        />
         <Text style={styles.levelText}>Nv. {level}</Text>
         <View style={styles.xpTrack}>
-          <View style={[styles.xpFill, { width: `${xpPercent}%` }]} />
+          <LinearGradient
+            colors={[colors.secondary, "#8B7CFF"]}
+            style={[styles.xpFill, { width: `${xpPercent}%` }]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+          />
         </View>
       </View>
+
       <Text style={styles.name}>{petName}</Text>
       <Currency coins={coins} gems={gems} />
     </View>
@@ -54,9 +74,9 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: radius.md,
-    backgroundColor: colors.card,
     alignItems: "center",
     justifyContent: "center",
+    overflow: "hidden",
     ...shadow.card,
   },
   menuIcon: {
@@ -64,11 +84,11 @@ const styles = StyleSheet.create({
     color: colors.textDark,
   },
   levelBadge: {
-    backgroundColor: colors.card,
     borderRadius: radius.md,
     paddingHorizontal: spacing.sm,
     paddingVertical: 6,
     width: 70,
+    overflow: "hidden",
     ...shadow.card,
   },
   levelText: {
@@ -86,11 +106,11 @@ const styles = StyleSheet.create({
   },
   xpFill: {
     height: "100%",
-    backgroundColor: colors.secondary,
   },
   name: {
     fontSize: 16,
     fontWeight: "700",
     color: colors.textDark,
+    letterSpacing: 0.3,
   },
 });
