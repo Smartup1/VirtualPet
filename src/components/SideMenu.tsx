@@ -1,6 +1,7 @@
 import React, { useEffect } from "react";
 import { View, Text, StyleSheet, Pressable } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
+import { LinearGradient } from "expo-linear-gradient";
 import { colors } from "@styles/colors";
 import { radius, shadow, spacing } from "@styles/theme";
 
@@ -14,11 +15,11 @@ interface SideMenuProps {
 
 const MENU_WIDTH = 220;
 
-const MENU_ITEMS: { key: MenuRoute; label: string; icon: string }[] = [
-  { key: "loja", label: "Loja", icon: "🛒" },
-  { key: "conquistas", label: "Conquistas", icon: "🏆" },
-  { key: "minijogos", label: "Minijogos", icon: "🎲" },
-  { key: "missoes", label: "Missões diárias", icon: "📅" },
+const MENU_ITEMS: { key: MenuRoute; label: string; icon: string; color: string }[] = [
+  { key: "loja", label: "Loja", icon: "🛒", color: colors.primary },
+  { key: "conquistas", label: "Conquistas", icon: "🏆", color: colors.happiness },
+  { key: "minijogos", label: "Minijogos", icon: "🎲", color: colors.secondary },
+  { key: "missoes", label: "Missões diárias", icon: "📅", color: colors.hygiene },
 ];
 
 export default function SideMenu({ visible, onClose, onNavigate }: SideMenuProps) {
@@ -46,10 +47,25 @@ export default function SideMenu({ visible, onClose, onNavigate }: SideMenuProps
         </Animated.View>
       )}
       <Animated.View style={[styles.panel, panelStyle]}>
+        <LinearGradient
+          colors={["#FFFFFF", "#FFF6E8"]}
+          style={StyleSheet.absoluteFill}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+        />
+
         <Text style={styles.title}>CapyPet</Text>
+        <View style={styles.titleUnderline} />
+
         {MENU_ITEMS.map((item) => (
-          <Pressable key={item.key} style={styles.item} onPress={() => onNavigate(item.key)}>
-            <Text style={styles.itemIcon}>{item.icon}</Text>
+          <Pressable
+            key={item.key}
+            style={({ pressed }) => [styles.item, pressed && styles.itemPressed]}
+            onPress={() => onNavigate(item.key)}
+          >
+            <View style={[styles.itemIconBadge, { backgroundColor: `${item.color}26` }]}>
+              <Text style={styles.itemIcon}>{item.icon}</Text>
+            </View>
             <Text style={styles.itemLabel}>{item.label}</Text>
           </Pressable>
         ))}
@@ -70,18 +86,27 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     width: MENU_WIDTH,
-    backgroundColor: colors.card,
+    overflow: "hidden",
     paddingTop: 60,
     paddingHorizontal: spacing.md,
     zIndex: 11,
     borderTopRightRadius: radius.lg,
     borderBottomRightRadius: radius.lg,
     ...shadow.card,
+    shadowOpacity: 0.3,
   },
   title: {
     fontSize: 20,
     fontWeight: "800",
     color: colors.primaryDark,
+    letterSpacing: 0.3,
+  },
+  titleUnderline: {
+    width: 36,
+    height: 3,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primary,
+    marginTop: 6,
     marginBottom: spacing.lg,
   },
   item: {
@@ -89,9 +114,21 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: spacing.sm,
     paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.xs,
+    borderRadius: radius.md,
+  },
+  itemPressed: {
+    backgroundColor: "rgba(0,0,0,0.05)",
+  },
+  itemIconBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: radius.sm,
+    alignItems: "center",
+    justifyContent: "center",
   },
   itemIcon: {
-    fontSize: 18,
+    fontSize: 16,
   },
   itemLabel: {
     fontSize: 15,
