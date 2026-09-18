@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { 
   View, 
   Text, 
@@ -23,6 +23,7 @@ import { useBlinkAnimation } from "@animations/blink";
 import { useEatAnimation } from "@animations/eat";
 import { useSleepAnimation } from "@animations/sleep";
 import { useHappyAnimation } from "@animations/happy"; // NOVO
+import { useDanceAnimation } from "@animations/dance";
 
 import { colors } from "@styles/colors";
 import { radius } from "@styles/theme";
@@ -45,6 +46,14 @@ export default function Pet({
   onPetPress,
 }: PetProps) {
   const [isHappy, setIsHappy] = useState(false);
+  const [isDancing, setIsDancing] = useState(false);
+
+  // guarda o mood mais recente sem precisar recriar o efeito de dança
+  // automática toda vez que ele muda
+  const moodRef = useRef(mood);
+  useEffect(() => {
+    moodRef.current = mood;
+  }, [mood]);
 
   // Animações existentes
   const idleStyle = useIdleAnimation();
@@ -54,6 +63,31 @@ export default function Pet({
   
   // NOVA animação de felicidade
   const { happyStyle } = useHappyAnimation(isHappy);
+
+  // NOVA animação de dança
+  const { danceStyle } = useDanceAnimation(isDancing);
+
+  // dança sozinho de vez em quando, pra sempre ter movimento na tela
+  // mesmo sem interação — mas não enquanto está dormindo ou comendo
+  useEffect(() => {
+    let timeoutId: ReturnType<typeof setTimeout>;
+
+    const agendarProximaDanca = () => {
+      const espera = 6000 + Math.random() * 6000; // entre 6s e 12s
+
+      timeoutId = setTimeout(() => {
+        if (moodRef.current !== "sleeping" && moodRef.current !== "eating") {
+          setIsDancing(true);
+          setTimeout(() => setIsDancing(false), 1400);
+        }
+        agendarProximaDanca();
+      }, espera);
+    };
+
+    agendarProximaDanca();
+
+    return () => clearTimeout(timeoutId);
+  }, []);
 
   // Acessório
   const accessory = equippedAccessory
@@ -74,6 +108,11 @@ export default function Pet({
     
     // Ativa animação feliz
     setIsHappy(true);
+
+    // Ativa também a dança — o toque interrompe qualquer dança agendada
+    // e começa uma nova na hora
+    setIsDancing(true);
+    setTimeout(() => setIsDancing(false), 1400);
     
     // Chama callback externo se existir
     if (onPetPress) {
@@ -122,6 +161,7 @@ export default function Pet({
           eatStyle,
           sleepBodyStyle,
           happyStyle, // NOVA animação
+          danceStyle, // NOVA animação de dança
         ]}
       >
         <Svg width={WIDTH} height={HEIGHT} viewBox={`0 0 ${WIDTH} ${HEIGHT}`}>
