@@ -8,7 +8,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <StatusBar style="dark" />
       <Stack>
-        {/* Rota raiz - redireciona para home */}
+        {/* Tela principal do jogo */}
         <Stack.Screen 
           name="index" 
           options={{ 
@@ -17,31 +17,17 @@ export default function RootLayout() {
           }} 
         />
         
-        {/* Tela principal do jogo */}
-        <Stack.Screen 
-          name="home" 
-          options={{ 
-            headerShown: false,
-            title: 'CapyPet'
-          }} 
-        />
-        
-        {/* Tela da loja */}
-        <Stack.Screen 
-          name="loja" 
-          options={{ 
-            headerShown: true,
-            title: '🛒 Loja',
-            headerBackTitle: 'Voltar',
-            headerStyle: {
-              backgroundColor: '#f5f5f5',
-            },
-            headerTitleStyle: {
-              fontWeight: '600',
-              color: '#333',
-            },
-          }} 
-        />
+        {/* Telas secundárias — cada uma já tem seu próprio cabeçalho
+            (fundo em gradiente + botão "← Voltar"), então o header nativo
+            do Stack fica desligado para não duplicar visualmente. */}
+        <Stack.Screen name="loja" options={{ headerShown: false, title: 'Loja' }} />
+        <Stack.Screen name="missoes" options={{ headerShown: false, title: 'Missões' }} />
+        <Stack.Screen name="conquistas" options={{ headerShown: false, title: 'Conquistas' }} />
+      </Stack>
+    </GestureHandlerRootView>
+  );
+}
+
       </Stack>
     </GestureHandlerRootView>
   );
