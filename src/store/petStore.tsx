@@ -2,7 +2,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { PetState, PetAction, PetStats, PetMood } from "@ptypes/index";
+import { PetState, PetAction, PetStats, PetMood, MissionActionKey } from "@ptypes/index";
 import {
   ACTION_GAIN,
   DECAY_PER_MINUTE,
@@ -12,6 +12,24 @@ import {
   xpNeededForLevel,
 } from "@constants/gameplay";
 import { SHOP_ITEMS } from "@constants/shopItems";
+import { DAILY_MISSIONS } from "@constants/missions";
+import { ACHIEVEMENTS } from "@constants/achievements";
+
+// Chave do dia local (YYYY-MM-DD), usada para saber quando as missões diárias
+// devem reiniciar.
+function todayKey(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function emptyActionCounts(): Record<MissionActionKey, number> {
+  return { feed: 0, play: 0, sleep: 0, bathe: 0, pet: 0 };
+}
+
+export type ClaimResult = "ok" | "not_ready" | "already_claimed" | "not_found";
 
 // Interface estendida da store
 interface PetStore extends PetState {
@@ -35,6 +53,11 @@ interface PetStore extends PetState {
   play: () => void;
   sleepAction: () => void;
   bathe: () => void;
+
+  // Missões diárias e conquistas
+  refreshDailyMissions: () => void;
+  claimMission: (missionId: string) => ClaimResult;
+  claimAchievement: (achievementId: string) => ClaimResult;
 }
 
 const initialState: PetState = {
@@ -60,6 +83,14 @@ const initialState: PetState = {
   equippedAccessory: null,
   interactionCount: 0,
   lastInteractionAt: Date.now(),
+  dailyMissions: {
+    date: todayKey(),
+    actionCounts: emptyActionCounts(),
+    claimed: [],
+  },
+  claimedAchievements: [],
+  lifetimeActionCounts: emptyActionCounts(),
+  lifetimeCoinsEarned: 0,
 };
 
 function clampStat(value: number) {
@@ -83,6 +114,9 @@ export const usePetStore = create<PetStore>()(
       // =============================================
 
       performAction: (action) => {
+        // Garante que os contadores diários estão no dia certo antes de somar.
+        get().refreshDailyMissions();
+
         const gain = ACTION_GAIN[action] ?? {};
         const xpGain = XP_PER_ACTION[action] ?? 0;
 
@@ -105,6 +139,17 @@ export const usePetStore = create<PetStore>()(
             progress: { level, xp, xpToNextLevel },
             mood: action === "sleep" ? "sleeping" : action === "feed" ? "eating" : computeMood(newStats),
             lastUpdatedAt: Date.now(),
+            dailyMissions: {
+              ...state.dailyMissions,
+              actionCounts: {
+                ...state.dailyMissions.actionCounts,
+                [action]: state.dailyMissions.actionCounts[action] + 1,
+              },
+            },
+            lifetimeActionCounts: {
+              ...state.lifetimeActionCounts,
+              [action]: state.lifetimeActionCounts[action] + 1,
+            },
           };
         });
       },
@@ -132,6 +177,7 @@ export const usePetStore = create<PetStore>()(
             coins: state.wallet.coins + coins,
             gems: state.wallet.gems + gems,
           },
+          lifetimeCoinsEarned: state.lifetimeCoinsEarned + Math.max(0, coins),
         }));
       },
 
@@ -198,6 +244,8 @@ export const usePetStore = create<PetStore>()(
       // =============================================
 
       petInteraction: () => {
+        get().refreshDailyMissions();
+
         const state = get();
         const now = Date.now();
         const timeSinceLastInteraction = (now - state.lastInteractionAt) / 1000;
@@ -225,6 +273,18 @@ export const usePetStore = create<PetStore>()(
           },
           interactionCount: state.interactionCount + 1,
           lastInteractionAt: now,
+          lifetimeCoinsEarned: state.lifetimeCoinsEarned + coinGain,
+          dailyMissions: {
+            ...state.dailyMissions,
+            actionCounts: {
+              ...state.dailyMissions.actionCounts,
+              pet: state.dailyMissions.actionCounts.pet + 1,
+            },
+          },
+          lifetimeActionCounts: {
+            ...state.lifetimeActionCounts,
+            pet: state.lifetimeActionCounts.pet + 1,
+          },
         });
       },
 
@@ -238,6 +298,7 @@ export const usePetStore = create<PetStore>()(
             ...state.wallet,
             coins: state.wallet.coins + amount,
           },
+          lifetimeCoinsEarned: state.lifetimeCoinsEarned + Math.max(0, amount),
         }));
       },
 
@@ -281,6 +342,11 @@ export const usePetStore = create<PetStore>()(
           ...initialState,
           lastUpdatedAt: Date.now(),
           lastInteractionAt: Date.now(),
+          dailyMissions: {
+            date: todayKey(),
+            actionCounts: emptyActionCounts(),
+            claimed: [],
+          },
         });
       },
 
@@ -300,11 +366,90 @@ export const usePetStore = create<PetStore>()(
       bathe: () => {
         get().performAction("bathe");
       },
+
+      // =============================================
+      // MISSÕES DIÁRIAS E CONQUISTAS
+      // =============================================
+
+      // Se o dia local mudou desde a última vez, zera o progresso diário.
+      // Chamado sempre que uma ação acontece e também ao abrir as telas de
+      // missões, para garantir que o reset acontece mesmo sem interação.
+      refreshDailyMissions: () => {
+        const state = get();
+        const today = todayKey();
+        if (state.dailyMissions.date === today) return;
+
+        set({
+          dailyMissions: {
+            date: today,
+            actionCounts: emptyActionCounts(),
+            claimed: [],
+          },
+        });
+      },
+
+      claimMission: (missionId) => {
+        get().refreshDailyMissions();
+
+        const mission = DAILY_MISSIONS.find((m) => m.id === missionId);
+        if (!mission) return "not_found";
+
+        const state = get();
+        if (state.dailyMissions.claimed.includes(missionId)) return "already_claimed";
+
+        const progress = state.dailyMissions.actionCounts[mission.actionKey] ?? 0;
+        if (progress < mission.target) return "not_ready";
+
+        const { coins = 0, gems = 0, xp = 0 } = mission.reward;
+
+        set((current) => ({
+          wallet: {
+            coins: current.wallet.coins + coins,
+            gems: current.wallet.gems + gems,
+          },
+          lifetimeCoinsEarned: current.lifetimeCoinsEarned + coins,
+          dailyMissions: {
+            ...current.dailyMissions,
+            claimed: [...current.dailyMissions.claimed, missionId],
+          },
+        }));
+
+        if (xp > 0) get().addXP(xp);
+
+        return "ok";
+      },
+
+      claimAchievement: (achievementId) => {
+        const achievement = ACHIEVEMENTS.find((a) => a.id === achievementId);
+        if (!achievement) return "not_found";
+
+        const state = get();
+        if (state.claimedAchievements.includes(achievementId)) return "already_claimed";
+
+        const progress = achievement.getProgress(state);
+        if (progress < achievement.target) return "not_ready";
+
+        const { coins = 0, gems = 0 } = achievement.reward;
+
+        set((current) => ({
+          wallet: {
+            coins: current.wallet.coins + coins,
+            gems: current.wallet.gems + gems,
+          },
+          lifetimeCoinsEarned: current.lifetimeCoinsEarned + coins,
+          claimedAchievements: [...current.claimedAchievements, achievementId],
+        }));
+
+        return "ok";
+      },
     }),
     {
       name: "capypet-storage",
       storage: createJSONStorage(() => AsyncStorage),
-      version: 2,
+      // v3: adiciona dailyMissions, claimedAchievements e contadores lifetime.
+      // Saves antigos continuam funcionando: os campos novos simplesmente
+      // partem dos valores padrão definidos em `initialState`.
+      version: 3,
     }
   )
 );
