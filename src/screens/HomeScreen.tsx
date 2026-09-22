@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { StyleSheet, View, Text, Alert } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -8,14 +8,34 @@ import Pet from "@components/Pet";
 import StatusBars from "@components/StatusBar";
 import BottomActions from "@components/BottomActions";
 import SideMenu from "@components/SideMenu";
+import FoodAnimation from "@components/FoodAnimation";
 import { colors } from "@styles/colors";
 import { spacing, radius, shadow } from "@styles/theme";
 import { usePet } from "@hooks/usePet";
+import { PetAction } from "@ptypes/index";
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { name, stats, progress, wallet, mood, equippedAccessory, handleAction } = usePet();
+  const {
+    name,
+    stats,
+    progress,
+    wallet,
+    mood,
+    equippedAccessory,
+    interactionCount,
+    handleAction,
+    petInteraction,
+  } = usePet();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [foodVisible, setFoodVisible] = useState(false);
+
+  function onAction(action: PetAction) {
+    handleAction(action);
+    if (action === "feed") {
+      setFoodVisible(true);
+    }
+  }
 
   return (
     <LinearGradient
@@ -34,7 +54,11 @@ export default function HomeScreen() {
         />
 
         <View style={styles.center}>
-          <Pet mood={mood} equippedAccessory={equippedAccessory} />
+          <View style={styles.interactionBadge}>
+            <Text style={styles.interactionText}>❤️ {interactionCount} carinhos</Text>
+          </View>
+
+          <Pet mood={mood} equippedAccessory={equippedAccessory} onPetPress={petInteraction} />
         </View>
 
         <View style={styles.statusCard}>
@@ -46,8 +70,10 @@ export default function HomeScreen() {
           />
         </View>
 
-        <BottomActions onAction={handleAction} />
+        <BottomActions onAction={onAction} />
       </SafeAreaView>
+
+      <FoodAnimation visible={foodVisible} onFinish={() => setFoodVisible(false)} />
 
       <SideMenu
         visible={menuOpen}
@@ -56,8 +82,13 @@ export default function HomeScreen() {
           setMenuOpen(false);
           if (route === "loja") {
             router.push("/loja");
+          } else if (route === "missoes") {
+            router.push("/missoes");
+          } else if (route === "conquistas") {
+            router.push("/conquistas");
+          } else if (route === "minijogos") {
+            Alert.alert("Em breve!", "Os minijogos ainda estão sendo preparados. 🎲");
           }
-          // conquistas, minijogos e missões ainda não têm rota — próximos passos
         }}
       />
     </LinearGradient>
@@ -76,6 +107,19 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
+  },
+  interactionBadge: {
+    backgroundColor: colors.hunger,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+    borderRadius: radius.pill,
+    marginBottom: spacing.sm,
+    ...shadow.card,
+  },
+  interactionText: {
+    color: colors.white,
+    fontWeight: "700",
+    fontSize: 13,
   },
   statusCard: {
     marginHorizontal: spacing.md,
