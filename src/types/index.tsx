@@ -19,6 +19,16 @@ export interface Wallet {
   gems: number;
 }
 
+// Chave de ação usada tanto para stats/animações quanto para o rastreio
+// de progresso em missões e conquistas (por isso é igual a PetAction).
+export type MissionActionKey = "feed" | "play" | "sleep" | "bathe" | "pet";
+
+export interface DailyMissionsState {
+  date: string; // dia local no formato YYYY-MM-DD; usado para detectar virada de dia
+  actionCounts: Record<MissionActionKey, number>; // progresso do dia por tipo de ação
+  claimed: string[]; // ids das missões já resgatadas hoje
+}
+
 export interface PetState {
   name: string;
   stats: PetStats;
@@ -31,6 +41,11 @@ export interface PetState {
   // NOVOS campos para interação
   interactionCount: number;
   lastInteractionAt: number;
+  // Missões diárias e conquistas
+  dailyMissions: DailyMissionsState;
+  claimedAchievements: string[]; // ids das conquistas já resgatadas (para sempre)
+  lifetimeActionCounts: Record<MissionActionKey, number>; // contagem total, nunca reseta
+  lifetimeCoinsEarned: number; // total de moedas ganhas ao longo do tempo (não desconta gastos)
 }
 
 export type PetAction = "feed" | "play" | "sleep" | "bathe" | "pet";
