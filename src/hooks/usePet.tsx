@@ -15,11 +15,15 @@ export function usePet(tickIntervalMs = 15000) {
   const mood = usePetStore((s) => s.mood);
   const name = usePetStore((s) => s.name);
   const equippedAccessory = usePetStore((s) => s.equippedAccessory);
+  const interactionCount = usePetStore((s) => s.interactionCount);
   const performAction = usePetStore((s) => s.performAction);
+  const petInteraction = usePetStore((s) => s.petInteraction);
   const applyOfflineDecay = usePetStore((s) => s.applyOfflineDecay);
+  const refreshDailyMissions = usePetStore((s) => s.refreshDailyMissions);
 
   useEffect(() => {
     applyOfflineDecay();
+    refreshDailyMissions();
     const interval = setInterval(() => {
       applyOfflineDecay();
     }, tickIntervalMs);
@@ -37,6 +41,8 @@ export function usePet(tickIntervalMs = 15000) {
     wallet,
     mood,
     equippedAccessory,
+    interactionCount,
     handleAction,
+    petInteraction,
   };
 }
