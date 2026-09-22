@@ -1,276 +1,207 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { View, Text, StyleSheet, Pressable } from "react-native";
-import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 import { colors } from "@styles/colors";
 import { radius, shadow, spacing } from "@styles/theme";
+import { ShopItem } from "@ptypes/index";
 
-type MenuRoute = "loja" | "conquistas" | "minijogos" | "missoes";
-
-interface SideMenuProps {
-  visible: boolean;
-  onClose: () => void;
-  onNavigate: (route: MenuRoute) => void;
+interface ShopItemCardProps {
+  item: ShopItem;
+  owned: boolean;
+  equipped: boolean;
+  canAfford: boolean;
+  onBuy: () => void;
+  onEquip: () => void;
 }
 
-const MENU_WIDTH = 220;
+const CURRENCY_ICON: Record<ShopItem["currency"], string> = {
+  coins: "🪙",
+  gems: "💎",
+};
 
-const MENU_ITEMS: { key: MenuRoute; label: string; icon: string; color: string }[] = [
-  { key: "loja", label: "Loja", icon: "🛒", color: colors.primary },
-  { key: "conquistas", label: "Conquistas", icon: "🏆", color: colors.happiness },
-  { key: "minijogos", label: "Minijogos", icon: "🎲", color: colors.secondary },
-  { key: "missoes", label: "Missões diárias", icon: "📅", color: colors.hygiene },
-];
-
-export default function SideMenu({ visible, onClose, onNavigate }: SideMenuProps) {
-  const translateX = useSharedValue(-MENU_WIDTH);
-  const overlayOpacity = useSharedValue(0);
-
-  useEffect(() => {
-    translateX.value = withTiming(visible ? 0 : -MENU_WIDTH, { duration: 250 });
-    overlayOpacity.value = withTiming(visible ? 1 : 0, { duration: 250 });
-  }, [visible]);
-
-  const panelStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: translateX.value }],
-  }));
-
-  const overlayStyle = useAnimatedStyle(() => ({
-    opacity: overlayOpacity.value,
-  }));
+export default function ShopItemCard({
+  item,
+  owned,
+  equipped,
+  canAfford,
+  onBuy,
+  onEquip,
+}: ShopItemCardProps) {
+  const isAccessory = item.category === "accessory";
+  // Itens de comida/boost são consumíveis: sempre podem ser comprados de novo
+  // (desde que dê pra pagar). Só acessórios ficam "donos" para sempre.
+  const canBuy = isAccessory ? !owned && canAfford : canAfford;
 
   return (
-    <>
-      {visible && (
-        <Animated.View style={[styles.overlay, overlayStyle]}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
-        </Animated.View>
+    <View style={styles.card}>
+      <LinearGradient
+        colors={["#FFFFFF", "#FFF8EE"]}
+        style={StyleSheet.absoluteFill}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+      />
+
+      {equipped && (
+        <View style={styles.equippedBadge}>
+          <Text style={styles.equippedBadgeText}>Equipado</Text>
+        </View>
       )}
-      <Animated.View style={[styles.panel, panelStyle]}>
-        <LinearGradient
-          colors={["#FFFFFF", "#FFF6E8"]}
-          style={StyleSheet.absoluteFill}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
-        />
 
-        <Text style={styles.title}>CapyPet</Text>
-        <View style={styles.titleUnderline} />
+      <View style={styles.iconBadge}>
+        <Text style={styles.icon}>{item.icon}</Text>
+      </View>
 
-        {MENU_ITEMS.map((item) => (
-          <Pressable
-            key={item.key}
-            style={({ pressed }) => [styles.item, pressed && styles.itemPressed]}
-            onPress={() => onNavigate(item.key)}
+      <Text style={styles.name} numberOfLines={1}>
+        {item.name}
+      </Text>
+      <Text style={styles.description} numberOfLines={2}>
+        {item.description}
+      </Text>
+
+      <View style={styles.priceRow}>
+        <Text style={styles.priceIcon}>{CURRENCY_ICON[item.currency]}</Text>
+        <Text style={styles.priceValue}>{item.price}</Text>
+      </View>
+
+      {isAccessory && owned ? (
+        <Pressable
+          onPress={onEquip}
+          style={({ pressed }) => [
+            styles.actionButton,
+            equipped ? styles.actionButtonUnequip : styles.actionButtonEquip,
+            pressed && styles.actionButtonPressed,
+          ]}
+        >
+          <Text
+            style={[
+              styles.actionLabel,
+              equipped ? styles.actionLabelUnequip : styles.actionLabelEquip,
+            ]}
           >
-            <View style={[styles.itemIconBadge, { backgroundColor: `${item.color}26` }]}>
-              <Text style={styles.itemIcon}>{item.icon}</Text>
-            </View>
-            <Text style={styles.itemLabel}>{item.label}</Text>
-          </Pressable>
-        ))}
-      </Animated.View>
-    </>
+            {equipped ? "Remover" : "Equipar"}
+          </Text>
+        </Pressable>
+      ) : (
+        <Pressable
+          onPress={onBuy}
+          disabled={!canBuy}
+          style={({ pressed }) => [
+            styles.actionButton,
+            styles.actionButtonBuy,
+            !canBuy && styles.actionButtonDisabled,
+            pressed && canBuy && styles.actionButtonPressed,
+          ]}
+        >
+          <Text style={[styles.actionLabel, styles.actionLabelBuy]}>
+            {!canAfford ? "Sem saldo" : "Comprar"}
+          </Text>
+        </Pressable>
+      )}
+    </View>
   );
 }
 
+const CARD_WIDTH = "48%";
+
 const styles = StyleSheet.create({
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: colors.overlay,
-    zIndex: 10,
-  },
-  panel: {
-    position: "absolute",
-    top: 0,
-    bottom: 0,
-    left: 0,
-    width: MENU_WIDTH,
+  card: {
+    width: CARD_WIDTH,
+    borderRadius: radius.md,
+    padding: spacing.sm,
+    marginBottom: spacing.sm,
+    alignItems: "center",
     overflow: "hidden",
-    paddingTop: 60,
-    paddingHorizontal: spacing.md,
-    zIndex: 11,
-    borderTopRightRadius: radius.lg,
-    borderBottomRightRadius: radius.lg,
     ...shadow.card,
-    shadowOpacity: 0.3,
   },
-  title: {
-    fontSize: 20,
-    fontWeight: "800",
-    color: colors.primaryDark,
-    letterSpacing: 0.3,
-  },
-  titleUnderline: {
-    width: 36,
-    height: 3,
+  equippedBadge: {
+    position: "absolute",
+    top: spacing.xs,
+    right: spacing.xs,
+    backgroundColor: colors.secondary,
     borderRadius: radius.pill,
-    backgroundColor: colors.primary,
-    marginTop: 6,
-    marginBottom: spacing.lg,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    zIndex: 1,
   },
-  item: {
+  equippedBadgeText: {
+    color: colors.white,
+    fontSize: 9,
+    fontWeight: "700",
+  },
+  iconBadge: {
+    width: 56,
+    height: 56,
+    borderRadius: radius.md,
+    backgroundColor: `${colors.primary}1F`,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: spacing.xs,
+    marginBottom: spacing.xs,
+  },
+  icon: {
+    fontSize: 28,
+  },
+  name: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.textDark,
+    textAlign: "center",
+  },
+  description: {
+    fontSize: 11,
+    color: colors.textLight,
+    textAlign: "center",
+    marginTop: 2,
+    minHeight: 28,
+  },
+  priceRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.sm,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.xs,
-    borderRadius: radius.md,
+    gap: 4,
+    marginTop: spacing.xs,
+    marginBottom: spacing.sm,
   },
-  itemPressed: {
-    backgroundColor: "rgba(0,0,0,0.05)",
+  priceIcon: {
+    fontSize: 13,
   },
-  itemIconBadge: {
-    width: 32,
-    height: 32,
-    borderRadius: radius.sm,
+  priceValue: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.textDark,
+  },
+  actionButton: {
+    width: "100%",
+    borderRadius: radius.pill,
+    paddingVertical: 8,
     alignItems: "center",
     justifyContent: "center",
   },
-  itemIcon: {
-    fontSize: 16,
+  actionButtonPressed: {
+    opacity: 0.8,
   },
-  itemLabel: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: colors.textDark,
-  },
-});
-import React, { useEffect } from "react";
-import { View, Text, StyleSheet, Pressable } from "react-native";
-import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
-import { LinearGradient } from "expo-linear-gradient";
-import { colors } from "@styles/colors";
-import { radius, shadow, spacing } from "@styles/theme";
-
-type MenuRoute = "loja" | "conquistas" | "minijogos" | "missoes";
-
-interface SideMenuProps {
-  visible: boolean;
-  onClose: () => void;
-  onNavigate: (route: MenuRoute) => void;
-}
-
-const MENU_WIDTH = 220;
-
-const MENU_ITEMS: { key: MenuRoute; label: string; icon: string; color: string }[] = [
-  { key: "loja", label: "Loja", icon: "🛒", color: colors.primary },
-  { key: "conquistas", label: "Conquistas", icon: "🏆", color: colors.happiness },
-  { key: "minijogos", label: "Minijogos", icon: "🎲", color: colors.secondary },
-  { key: "missoes", label: "Missões diárias", icon: "📅", color: colors.hygiene },
-];
-
-export default function SideMenu({ visible, onClose, onNavigate }: SideMenuProps) {
-  const translateX = useSharedValue(-MENU_WIDTH);
-  const overlayOpacity = useSharedValue(0);
-
-  useEffect(() => {
-    translateX.value = withTiming(visible ? 0 : -MENU_WIDTH, { duration: 250 });
-    overlayOpacity.value = withTiming(visible ? 1 : 0, { duration: 250 });
-  }, [visible]);
-
-  const panelStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: translateX.value }],
-  }));
-
-  const overlayStyle = useAnimatedStyle(() => ({
-    opacity: overlayOpacity.value,
-  }));
-
-  return (
-    <>
-      {visible && (
-        <Animated.View style={[styles.overlay, overlayStyle]}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
-        </Animated.View>
-      )}
-      <Animated.View style={[styles.panel, panelStyle]}>
-        <LinearGradient
-          colors={["#FFFFFF", "#FFF6E8"]}
-          style={StyleSheet.absoluteFill}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
-        />
-
-        <Text style={styles.title}>CapyPet</Text>
-        <View style={styles.titleUnderline} />
-
-        {MENU_ITEMS.map((item) => (
-          <Pressable
-            key={item.key}
-            style={({ pressed }) => [styles.item, pressed && styles.itemPressed]}
-            onPress={() => onNavigate(item.key)}
-          >
-            <View style={[styles.itemIconBadge, { backgroundColor: `${item.color}26` }]}>
-              <Text style={styles.itemIcon}>{item.icon}</Text>
-            </View>
-            <Text style={styles.itemLabel}>{item.label}</Text>
-          </Pressable>
-        ))}
-      </Animated.View>
-    </>
-  );
-}
-
-const styles = StyleSheet.create({
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: colors.overlay,
-    zIndex: 10,
-  },
-  panel: {
-    position: "absolute",
-    top: 0,
-    bottom: 0,
-    left: 0,
-    width: MENU_WIDTH,
-    overflow: "hidden",
-    paddingTop: 60,
-    paddingHorizontal: spacing.md,
-    zIndex: 11,
-    borderTopRightRadius: radius.lg,
-    borderBottomRightRadius: radius.lg,
-    ...shadow.card,
-    shadowOpacity: 0.3,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: "800",
-    color: colors.primaryDark,
-    letterSpacing: 0.3,
-  },
-  titleUnderline: {
-    width: 36,
-    height: 3,
-    borderRadius: radius.pill,
+  actionButtonBuy: {
     backgroundColor: colors.primary,
-    marginTop: 6,
-    marginBottom: spacing.lg,
   },
-  item: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.xs,
-    borderRadius: radius.md,
+  actionButtonEquip: {
+    backgroundColor: colors.secondary,
   },
-  itemPressed: {
-    backgroundColor: "rgba(0,0,0,0.05)",
+  actionButtonUnequip: {
+    backgroundColor: colors.barBackground,
   },
-  itemIconBadge: {
-    width: 32,
-    height: 32,
-    borderRadius: radius.sm,
-    alignItems: "center",
-    justifyContent: "center",
+  actionButtonDisabled: {
+    backgroundColor: colors.barBackground,
   },
-  itemIcon: {
-    fontSize: 16,
+  actionLabel: {
+    fontSize: 12,
+    fontWeight: "700",
   },
-  itemLabel: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: colors.textDark,
+  actionLabelBuy: {
+    color: colors.white,
+  },
+  actionLabelEquip: {
+    color: colors.white,
+  },
+  actionLabelUnequip: {
+    color: colors.textLight,
   },
 });
